@@ -1,0 +1,17 @@
+/**
+* @author: leroy
+* @date: 2021/8/20 20:26
+* @description：global
+*/
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply min-h-lvh;
+}
+
+input {
+  /** Remove shadow on Safari iOS */
+  appearance: none;
+}
