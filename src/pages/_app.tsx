@@ -8,17 +8,27 @@ import type { AppProps, NextWebVitalsMetric } from 'next/app';
 import type { NextPage } from 'next';
 import { wrapper } from '@/store/store';
 import { StyleProvider } from '@ant-design/cssinjs';
+import { App as AntdApp, ConfigProvider } from 'antd';
 
-// import 'antd/dist/reset.css';
-import '@/styles/global.css';
+import type { LayoutConfig } from '@/layout';
+import './global.css';
 import Layout from '@/layout';
 
 import App from 'next/app';
 import { Provider } from 'react-redux';
 import { fetchUserInfo } from '@/store/slices/user';
+import dayjs from 'dayjs';
+import durationPlugin from 'dayjs/plugin/duration';
+import locale from 'antd/locale/zh_CN';
+import 'dayjs/locale/zh-cn';
 
-export type NextPageWithLayout = NextPage & {
-  getLayout?: (page: ReactElement) => ReactNode;
+dayjs.locale('zh-cn');
+dayjs.extend(durationPlugin);
+
+export type NextPageWithLayout<T = any> = NextPage<T> & {
+  layout?: {
+    renderContent?: (page: ReactElement) => ReactNode;
+  } & LayoutConfig;
 };
 
 type AppPropsWithLayout = AppProps & {
@@ -29,11 +39,26 @@ type AppPropsWithLayout = AppProps & {
 function MyApp({ Component, pageProps, ...other }: AppPropsWithLayout) {
   const { store, props } = wrapper.useWrappedStore({ pageProps, ...other });
 
-  const getLayout = Component.getLayout ?? ((page) => <Layout>{page}</Layout>);
+  const { renderContent, ...layout } = Component.layout ?? {};
+  const getLayout = renderContent ?? ((page) => <Layout {...layout}>{page}</Layout>);
   return (
-    <StyleProvider hashPriority="high">
-      <Provider store={store}>{getLayout(<Component {...props.pageProps} {...other} />)}</Provider>
-    </StyleProvider>
+    <ConfigProvider
+      locale={locale}
+      theme={{
+        token: {
+          colorPrimary: '#FF8135',
+          colorTextBase: '#19191a',
+        },
+      }}
+    >
+      <AntdApp>
+        <StyleProvider hashPriority="high">
+          <Provider store={store}>
+            {getLayout(<Component {...props.pageProps} {...other} />)}
+          </Provider>
+        </StyleProvider>
+      </AntdApp>
+    </ConfigProvider>
   );
 }
 

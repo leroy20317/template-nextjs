@@ -8,6 +8,7 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import type { User } from '@/store/services/user';
 import { getUserInfo } from '@/store/services/user';
+import type { AppDispatch, AppState } from '@/store/store';
 
 export interface UserState {
   userInfo: User;
@@ -33,13 +34,17 @@ export const homeSlice = createSlice({
 
 export const { save } = homeSlice.actions;
 
-export const fetchUserInfo = createAsyncThunk(
-  'user/getUserInfo',
-  async (params: { auth: string }, { dispatch }) => {
-    const data = await getUserInfo(params);
-    dispatch(save({ userInfo: data }));
-    return data;
-  },
-);
+export const fetchUserInfo = createAsyncThunk<
+  unknown,
+  { auth: string },
+  {
+    dispatch: AppDispatch;
+    state: AppState;
+  }
+>('user/getUserInfo', async (params, { dispatch }) => {
+  const data = await getUserInfo(params);
+  dispatch(save({ userInfo: data }));
+  return data;
+});
 
 export default homeSlice.reducer;

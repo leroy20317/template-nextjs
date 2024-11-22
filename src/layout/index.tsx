@@ -5,12 +5,17 @@
  */
 
 import Head from 'next/head';
-// import Header from '@/components/Header';
+import Header from './Header';
 import SEO from './SEO';
-// import Footer from './Footer';
+import Footer from './Footer';
 import type { FC, ReactNode } from 'react';
 
-const Layout: FC<{ children: ReactNode }> = ({ children }) => (
+export type LayoutConfig = {
+  header?: false;
+  footer?: false;
+};
+
+const Layout: FC<{ children: ReactNode } & LayoutConfig> = ({ children, footer, header }) => (
   <>
     <Head>
       <meta name="baidu-site-verification" content="uGgzMZ4ZfV" />
@@ -27,9 +32,9 @@ const Layout: FC<{ children: ReactNode }> = ({ children }) => (
       <meta content="yes" name="apple-touch-fullscreen" />
     </Head>
     <SEO />
-    {/* <Header /> */}
+    {header !== false && <Header />}
     {children}
-    {/* <Footer /> */}
+    {footer !== false && <Footer />}
   </>
 );
 export default Layout;
