@@ -4,11 +4,11 @@
  * @description：seo
  */
 import Head from 'next/head';
-import { useAppSelector } from '@/store/store';
+import { useMemoSelector } from '@/store/store';
 import type { FC } from 'react';
 
 const SEO: FC = () => {
-  const { title, description, keywords } = useAppSelector((state) => state.seo);
+  const { title, description, keywords } = useMemoSelector((state) => state.seo);
   return (
     <Head>
       <title>{title}</title>

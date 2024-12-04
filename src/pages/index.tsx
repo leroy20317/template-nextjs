@@ -4,7 +4,7 @@
  * @description：首页
  */
 import { saveTDK } from '@/store/slices/seo';
-import { useAppSelector } from '@/store/store';
+import { useMemoSelector } from '@/store/store';
 import { useEffect } from 'react';
 import { Button } from 'antd';
 import CatSvg from '@/assets/svgs/cat.svg';
@@ -12,7 +12,7 @@ import Icon from '@ant-design/icons';
 import type { NextPageWithLayout } from '@/pages/_app';
 
 const Home: NextPageWithLayout = () => {
-  const { userInfo, loading } = useAppSelector((state) => ({
+  const { userInfo, loading } = useMemoSelector((state) => ({
     userInfo: state.user.userInfo,
     loading: state.loading['user/getUserInfo'],
   }));

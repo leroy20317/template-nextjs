@@ -2,19 +2,20 @@
 
 const name = process.env.npm_package_name;
 // const { withSentryConfig } = require('@sentry/nextjs');
-const isProd = process.env.NODE_ENV === 'production';
-// const isProd = false;
-const apiHost = '';
-const cdnHost = apiHost.replace('api', 'cdn');
+
+// const isProd = process.env.NODE_ENV === 'production';
+const isProd = false;
+const baseDomain = '.example.com';
+const cdnHost = `cdn${baseDomain}`;
+
 /**
  * @type {import('next').NextConfig}
  */
 let nextConfig = {
   distDir: 'build',
   env: {
-    API_HOST: process.env.PROD ? `https://${apiHost}` : `http://${apiHost.replace('api', 'api.01')}`,
-    STATIC_HOST: isProd ? `//${cdnHost}/${name}/static` : '/static',
-    CDN_HOST: isProd ? `https://${cdnHost}/${name}` : '',
+    BASE_DOMAIN: baseDomain,
+    STATIC_HOST: isProd ? `${cdnHost}/${name}/static` : '/static',
   },
 
   // cdn in production and localhost for development

@@ -34,12 +34,9 @@ const codeMessage: Record<number, string | (() => void)> = {
   503: '服务不可用，服务器暂时过载或维护。',
   504: '网关超时。',
 };
-
+const baseDomain = process.env.BASE_DOMAIN;
 const instance = axios.create({
-  baseURL:
-    typeof window === 'undefined'
-      ? process?.env?.API_HOST?.replace('https', 'http')
-      : process.env.API_HOST,
+  baseURL: `https://api${baseDomain}`,
   withCredentials: true,
 
   headers: {
