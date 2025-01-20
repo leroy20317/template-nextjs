@@ -3,7 +3,7 @@
  * @date: 2021/8/21 09:54
  * @description：首页
  */
-import { saveTDK } from '@/store/slices/seo';
+import { saveSEO } from '@/store/slices/seo';
 import { useAppSelector } from '@/store/store';
 import { useEffect } from 'react';
 import { Button } from 'antd';
@@ -35,7 +35,7 @@ const Home: NextPageWithLayout = () => {
 
 Home.getInitialProps = async ({ store, query }) => {
   await store.dispatch(
-    saveTDK({
+    saveSEO({
       title: '首页',
       keywords: '',
       description: '',
