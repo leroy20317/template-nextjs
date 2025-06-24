@@ -1,4 +1,4 @@
-# Next.js 企业级项目模板
+# Next.js 项目模板
 
 一个基于 Next.js 15 + TypeScript + TailwindCSS + Ant Design 的现代化企业级前端项目模板。
 
