@@ -3,9 +3,7 @@
 * @date: 2021/8/20 20:26
 * @description：global
 */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
 body {
   @apply min-h-lvh;
