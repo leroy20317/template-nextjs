@@ -95,6 +95,7 @@
     "postcss-pxtorem": "^6.1.0",
     "postcss-scss": "^4.0.9",
     "prettier": "^3.4.2",
+    "prettier-plugin-tailwindcss": "^0.6.13",
     "rd": "^2.0.1",
     "react-flip-move": "^3.0.4",
     "stylelint": "^16.6.1",
