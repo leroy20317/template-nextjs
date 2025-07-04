@@ -1,0 +1,68 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+## 技术栈
+
+### 核心框架
+
+- **Next.js** - React全栈框架，支持SSR/SSG
+- **React** - 前端UI框架
+- **TypeScript** - 类型安全的JavaScript超集
+
+### 样式方案
+
+- **Tailwind CSS** - 实用优先的CSS框架
+- **Sass** - CSS预处理器
+- **PostCSS** - CSS后处理器
+
+### UI组件库
+
+- **Ant Design** - PC端UI组件库
+
+### 状态管理
+
+- **Redux Toolkit** - 状态管理工具
+- **React Redux** - React-Redux绑定
+
+### 开发工具
+
+- **ESLint** - 代码质量检查
+- **Prettier** - 代码格式化
+- **Stylelint** - CSS代码检查
+- **Husky** - Git钩子管理
+- **Commitlint** - 提交信息规范
+
+## 目录结构
+
+```
+template-nextjs/
+├── public/                     # 静态资源目录
+│   └── static/                 # 静态文件 (图片、字体等)
+├── src/                        # 源代码目录
+│   ├── assets/                 # 项目资源文件
+│   │   └── svgs/              # SVG 图标资源
+│   ├── components/            # 通用组件
+│   │   └── RenderInBody/      # 示例：Portal 组件
+│   ├── hooks/                 # 自定义 React Hooks
+│   ├── layout/                # 布局组件
+│   ├── pages/                 # Next.js 页面文件
+│   ├── store/                 # Redux 状态管理
+│   │   ├── services/          # API 服务层
+│   │   └── slices/            # Redux 切片
+│   └── utils/                 # 工具函数
+├── types/                     # 全局类型定义
+└── 配置文件...
+```
+
+## 开发规范
+
+- 使用 pnpm 作为包管理工具
+- 使用 TypeScript 和 React 书写
+- 避免引入新依赖，严控打包体积
+- 兼容现代浏览器
+- 支持服务端渲染
+- 保持向下兼容，避免 breaking change
+- 合理使用 React.memo、useMemo 和 useCallback 优化性能
