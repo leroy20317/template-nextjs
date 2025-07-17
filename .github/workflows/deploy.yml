@@ -1,0 +1,230 @@
+name: Deploy
+
+on:
+  # 手动触发
+  workflow_dispatch:
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - src/**
+  #     - public/**
+  #     - scripts/**
+  #     - next.config.js
+  #     - package.json
+  #     - pnpm-lock.yaml
+  # pull_request:
+  #   branches: [main]
+  #   paths:
+  #     - src/**
+  #     - public/**
+  #     - scripts/**
+  #     - next.config.js
+  #     - package.json
+  #     - pnpm-lock.yaml
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 切换分支
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      # 生成版本号（基于时间）
+      - name: Generate version
+        id: version
+        run: |
+          VERSION=$(date +%Y%m%d%H%M%S)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Generated version: $VERSION"
+
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          version: 10
+          run_install: false
+
+      # 使用 node:lts/jod
+      - name: use Node.js lts/jod
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/jod'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm i
+
+      # build
+      - name: Build
+        run: pnpm run publish-t1
+
+      # tar
+      - name: Tar dist
+        run: tar zcf build.tar.gz --exclude=build/cache build public scripts package.json pnpm-lock.yaml .npmrc next.config.js Dockerfile docker-compose.yaml
+
+      # Deploy to server
+      - name: Deploy to server
+        id: deploy
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.REMOTE_PREVIEW_HOST }}
+          username: ${{ secrets.REMOTE_PREVIEW_USER }}
+          key: ${{ secrets.ACCESS_TOKEN }}
+          source: 'build.tar.gz'
+          target: /web/next
+
+      # 零停机部署
+      - name: Zero-downtime deployment
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.REMOTE_PREVIEW_HOST }}
+          username: ${{ secrets.REMOTE_PREVIEW_USER }}
+          key: ${{ secrets.ACCESS_TOKEN }}
+          script: |
+            # 进入工作目录
+            cd /web/next
+            echo "Working directory: $(pwd)"
+
+            # 解压新版本文件
+            echo "Extracting new build..."
+            tar zxf build.tar.gz
+            rm build.tar.gz
+
+            # =====================================================
+            # 配置变量集中定义区域
+            # =====================================================
+
+            # 基础配置
+            IMAGE_NAME="next"
+            VERSION=$(date +%Y%m%d%H%M%S)
+
+            # 镜像标签定义
+            NEW_IMAGE_TAG="${IMAGE_NAME}:${VERSION}"
+            CURRENT_IMAGE_TAG="${IMAGE_NAME}:current"
+            PREVIOUS_IMAGE_TAG="${IMAGE_NAME}:previous"
+
+            # 健康检查配置
+            MAX_RETRIES=10
+            RETRY_DELAY=3
+            HEALTH_CHECK_URL="http://localhost:8000/api/health"
+            HEALTH_CHECK_PASSED=false
+
+            # =====================================================
+            # 输出配置信息
+            # =====================================================
+            echo "Deploying version: $VERSION"
+            echo "Debug: IMAGE_NAME = '$IMAGE_NAME'"
+            echo "Debug: VERSION = '$VERSION'"
+            echo "Debug: NEW_IMAGE_TAG = '$NEW_IMAGE_TAG'"
+            echo "Debug: CURRENT_IMAGE_TAG = '$CURRENT_IMAGE_TAG'"
+            echo "Debug: PREVIOUS_IMAGE_TAG = '$PREVIOUS_IMAGE_TAG'"
+            echo "Debug: HEALTH_CHECK_URL = '$HEALTH_CHECK_URL'"
+
+            echo "Building new image: $NEW_IMAGE_TAG"
+
+            # 构建新镜像（带版本标签）
+            docker build -t "$NEW_IMAGE_TAG" .
+
+            # 检查当前是否有运行的容器
+            CURRENT_CONTAINER=$(docker ps -q --filter "name=${IMAGE_NAME}")
+
+            if [ ! -z "$CURRENT_CONTAINER" ]; then
+                echo "Found running container: $CURRENT_CONTAINER"
+
+                # 备份当前镜像标签
+                CURRENT_IMAGE=$(docker inspect --format='{{.Config.Image}}' $CURRENT_CONTAINER 2>/dev/null || echo "")
+                if [ ! -z "$CURRENT_IMAGE" ] && [ "$CURRENT_IMAGE" != "$NEW_IMAGE_TAG" ]; then
+                    echo "Backing up current image as previous: $CURRENT_IMAGE -> $PREVIOUS_IMAGE_TAG"
+                    docker tag "$CURRENT_IMAGE" "$PREVIOUS_IMAGE_TAG" 2>/dev/null || true
+                fi
+            fi
+
+            # 标记新镜像为当前版本
+            docker tag "$NEW_IMAGE_TAG" "$CURRENT_IMAGE_TAG"
+
+            # 更新 docker-compose.yaml 中的镜像标签
+            echo "Debug: Before sed - Current docker-compose.yaml image line:"
+            grep "image:" docker-compose.yaml
+            echo "Debug: CURRENT_IMAGE_TAG = '$CURRENT_IMAGE_TAG'"
+            echo "Debug: About to run sed command..."
+            sed -i "s|image: [^[:space:]#]*|image: ${CURRENT_IMAGE_TAG}|" docker-compose.yaml
+            echo "Debug: After sed - New docker-compose.yaml image line:"
+            grep "image:" docker-compose.yaml
+
+            # 使用 docker compose 进行零停机部署
+            echo "Starting zero-downtime deployment..."
+
+            # 重新创建并启动容器（这会先启动新容器，再停止旧容器）
+            docker compose up -d --force-recreate --remove-orphans
+
+            # 等待新容器启动
+            echo "Waiting for new container to start..."
+            sleep 10
+
+            # 健康检查
+            echo "Performing health check..."
+
+            for i in $(seq 1 $MAX_RETRIES); do
+                echo "Attempt $i/$MAX_RETRIES: Checking health at $HEALTH_CHECK_URL..."
+                if curl --fail --silent --show-error --connect-timeout 5 --max-time 10 $HEALTH_CHECK_URL; then
+                    echo "Health check passed."
+                    HEALTH_CHECK_PASSED=true
+                    break
+                fi
+                if [ $i -lt $MAX_RETRIES ]; then
+                    echo "Health check failed. Retrying in $RETRY_DELAY seconds..."
+                    sleep $RETRY_DELAY
+                else
+                    echo "Health check failed after $MAX_RETRIES attempts."
+                fi
+            done
+
+            # 处理部署结果
+            if [ "$HEALTH_CHECK_PASSED" != "true" ]; then
+                echo "Deployment failed! Attempting rollback..."
+
+                # 检查是否有之前的镜像可以回滚
+                if docker image inspect "$PREVIOUS_IMAGE_TAG" >/dev/null 2>&1; then
+                    echo "Rolling back to previous version: $PREVIOUS_IMAGE_TAG"
+
+                    # 更新 docker-compose.yaml 使用之前的镜像
+                    sed -i "s|image: [^[:space:]#]*|image: ${PREVIOUS_IMAGE_TAG}|" docker-compose.yaml
+
+                    # 重新启动服务
+                    docker compose down --remove-orphans || true
+                    docker compose up -d
+
+                    # 等待回滚完成
+                    sleep 10
+
+                    # 再次进行健康检查
+                    if curl --fail --silent --show-error --connect-timeout 5 --max-time 10 $HEALTH_CHECK_URL; then
+                        echo "Rollback successful!"
+                    else
+                        echo "Rollback failed! Manual intervention required."
+                    fi
+                else
+                    echo "No previous image available for rollback!"
+                fi
+
+                exit 1
+            else
+                echo "Deployment successful!"
+
+                # 清理老旧镜像（只保留 current 和 previous 两个镜像）
+                echo "Cleaning up old images..."
+                # 删除除了 current 和 previous 之外的所有旧镜像
+                docker images "$IMAGE_NAME" --format "{{.Repository}}:{{.Tag}}" | \
+                grep -v -E ":current$|:previous$" | \
+                xargs -r docker rmi 2>/dev/null || true
+
+                # 清理悬空镜像
+                docker image prune -f
+
+                echo "Deployment completed successfully!"
+                echo "Current version: $VERSION"
+                echo "Image: $NEW_IMAGE_TAG"
+            fi

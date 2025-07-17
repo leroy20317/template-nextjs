@@ -1,7 +1,7 @@
 ---
-description:
+description: 辅助生成 git 提交信息
 globs:
-alwaysApply: false
+alwaysApply: true
 ---
 
 # Git 规范
